@@ -219,12 +219,17 @@
 
       var nameIn = el('input', { type: 'text', value: item.name, 'data-field': 'name', placeholder: '例: HFレターHOT' });
       var noteIn = el('input', { type: 'text', value: item.note, 'data-field': 'note', placeholder: '（任意）' });
-      var setsIn = el('input', { type: 'number', min: '0', step: '1', value: item.sets, 'data-field': 'sets', placeholder: '例: 23500', class: 'num' });
+      var setsIn = el('input', { type: 'text', inputmode: 'numeric', pattern: '[0-9]*', value: item.sets, 'data-field': 'sets', placeholder: '例: 23500', class: 'num sets', autocomplete: 'off' });
 
       nameIn.addEventListener('input', function () { item.name = nameIn.value; scheduleSave(); });
       noteIn.addEventListener('input', function () { item.note = noteIn.value; scheduleSave(); });
       setsIn.addEventListener('input', function () {
-        item.sets = setsIn.value === '' ? '' : Math.max(0, Math.floor(Number(setsIn.value)));
+        // 数字以外（全角数字は半角に変換）を取り除く
+        var digits = setsIn.value
+          .replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+          .replace(/[^0-9]/g, '');
+        if (digits !== setsIn.value) setsIn.value = digits;
+        item.sets = digits === '' ? '' : Number(digits);
         updateSummary();
         scheduleSave();
       });

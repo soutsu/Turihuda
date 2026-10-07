@@ -71,7 +71,8 @@ table.list td a:hover { text-decoration: underline; }
 table.items td.summary { color: #374151; white-space: nowrap; font-size: 0.9rem; }
 table.items td:nth-child(2) { width: 28%; }
 table.items td:nth-child(3) { width: 24%; }
-table.items td:nth-child(4) { width: 170px; }
+table.items td:nth-child(4) { width: 1%; white-space: nowrap; }
+input.sets { width: 9.5em; }
 
 .row-actions { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
