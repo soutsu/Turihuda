@@ -95,6 +95,29 @@
     return tags;
   }
 
+  /**
+   * 空白 1 件 → 連数分の釣り札データの配列
+   *
+   * blank: { groupId, sets, count }
+   * 商品名は「空白」固定。補足行は "[グループID]-連番"（1 始まり）。
+   */
+  var BLANK_NAME = '空白';
+  function buildBlankTags(blank) {
+    var count = Math.max(0, Math.floor(Number(blank.count) || 0));
+    var groupId = String(blank.groupId || '').trim();
+    var tags = [];
+    for (var n = 1; n <= count; n++) {
+      var note = groupId ? groupId + '-' + n : String(n);
+      buildTags({ name: BLANK_NAME, note: note, sets: blank.sets }).forEach(function (t) {
+        t.isBlank = true;
+        t.sheetIndex = n;
+        t.sheetCount = count;
+        tags.push(t);
+      });
+    }
+    return tags;
+  }
+
   /** 画面表示用の要約 */
   function summarize(sets) {
     var bd = komaBreakdown(sets);
@@ -114,6 +137,8 @@
     tiersForKoma: tiersForKoma,
     splitTiers: splitTiers,
     buildTags: buildTags,
+    BLANK_NAME: BLANK_NAME,
+    buildBlankTags: buildBlankTags,
     summarize: summarize
   };
 

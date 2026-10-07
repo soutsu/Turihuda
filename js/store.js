@@ -30,15 +30,28 @@
     return { name: '', note: '', sets: '' };
   }
 
+  var BLANK_DEFAULT_SETS = 50;
+  function newBlank() {
+    return { groupId: '', sets: BLANK_DEFAULT_SETS, count: 1 };
+  }
+
+  /** 古い保存データにも blanks を持たせる */
+  function normalize(job) {
+    if (!Array.isArray(job.items)) job.items = [newItem()];
+    if (!Array.isArray(job.blanks)) job.blanks = [];
+    return job;
+  }
+
   var Store = {
     list: function () {
-      return load().jobs.slice().sort(function (a, b) {
+      return load().jobs.map(normalize).sort(function (a, b) {
         return (b.updatedAt || '').localeCompare(a.updatedAt || '');
       });
     },
 
     get: function (id) {
-      return load().jobs.find(function (j) { return j.id === id; }) || null;
+      var job = load().jobs.find(function (j) { return j.id === id; });
+      return job ? normalize(job) : null;
     },
 
     /** 受注番号の重複チェック（excludeId は自分自身を除外する用） */
@@ -49,7 +62,7 @@
       });
     },
 
-    create: function (customer, orderNo, items) {
+    create: function (customer, orderNo, items, blanks) {
       var data = load();
       var job = {
         id: uid(),
@@ -58,6 +71,9 @@
         items: (items && items.length) ? items.map(function (it) {
           return { name: it.name || '', note: it.note || '', sets: it.sets === undefined ? '' : it.sets };
         }) : [newItem()],
+        blanks: (blanks || []).map(function (b) {
+          return { groupId: b.groupId || '', sets: b.sets === undefined ? BLANK_DEFAULT_SETS : b.sets, count: b.count === undefined ? 1 : b.count };
+        }),
         createdAt: now(),
         updatedAt: now()
       };
@@ -82,7 +98,9 @@
       save(data);
     },
 
-    newItem: newItem
+    newItem: newItem,
+    newBlank: newBlank,
+    BLANK_DEFAULT_SETS: BLANK_DEFAULT_SETS
   };
 
   root.TurihudaStore = Store;

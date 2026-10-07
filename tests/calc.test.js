@@ -58,3 +58,13 @@ test('buildTags: zero/empty sets produces nothing', () => {
   assert.deepEqual(calc.buildTags({ name: 'X', note: '', sets: 0 }), []);
   assert.deepEqual(calc.buildTags({ name: 'X', note: '', sets: '' }), []);
 });
+
+test('buildBlankTags: one page per 連数, note = groupId-n, name fixed to 空白', () => {
+  const tags = calc.buildBlankTags({ groupId: '238', sets: 50, count: 3 });
+  assert.equal(tags.length, 3);
+  assert.deepEqual(tags.map(t => t.name), ['空白', '空白', '空白']);
+  assert.deepEqual(tags.map(t => t.note), ['238-1', '238-2', '238-3']);
+  for (const t of tags) assert.deepEqual(t.lines, [{ sets: 50, koma: 1 }]);
+  assert.deepEqual(calc.buildBlankTags({ groupId: '238', sets: 50, count: 0 }), []);
+  assert.deepEqual(calc.buildBlankTags({ groupId: '238', sets: 0, count: 2 }), []);
+});
