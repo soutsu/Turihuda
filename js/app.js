@@ -50,12 +50,28 @@
   }
 
   // ---------------------------------------------------------------- routing
-  var currentJob = null;
+  var currentJob = null;   // 編集中の仕事（保存ボタンを押すまでファイルには書かない）
+  var dirty = false;       // 未保存の変更があるか
+  var suppressRoute = false;
+
+  var UNSAVED_MSG = '保存されていない変更があります。破棄して移動しますか？';
 
   function route() {
+    if (suppressRoute) { suppressRoute = false; return; }
     var m = location.hash.match(/^#job\/(.+)$/);
-    if (m) {
-      var job = Store.get(decodeURIComponent(m[1]));
+    var targetId = m ? decodeURIComponent(m[1]) : null;
+
+    // 編集中の仕事から別画面へ移ろうとしている
+    if (currentJob && dirty && targetId !== currentJob.id) {
+      if (!confirm(UNSAVED_MSG)) {
+        suppressRoute = true;
+        location.hash = '#job/' + encodeURIComponent(currentJob.id);
+        return;
+      }
+    }
+    if (targetId) {
+      if (currentJob && currentJob.id === targetId) return; // 同じ仕事を再描画しない
+      var job = Store.get(targetId);
       if (job) { renderJob(job); return; }
       location.hash = '';
       return;
@@ -64,10 +80,14 @@
   }
 
   window.addEventListener('hashchange', route);
+  window.addEventListener('beforeunload', function (e) {
+    if (currentJob && dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
 
   // ------------------------------------------------------------- job list
   function renderList() {
     currentJob = null;
+    dirty = false;
     var main = $('#app');
     main.innerHTML = '';
 
@@ -149,17 +169,38 @@
   }
 
   // ------------------------------------------------------------ job editor
-  var saveTimer = null;
-  function scheduleSave() {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveNow, 300);
-  }
-  function saveNow() {
-    clearTimeout(saveTimer);
-    if (!currentJob) return;
-    Store.update(currentJob);
+  function setStatus(text, cls) {
     var s = $('#save-status');
-    if (s) { s.textContent = '保存しました ' + fmtDate(currentJob.updatedAt); }
+    if (!s) return;
+    s.textContent = text;
+    s.className = 'save-status ' + (cls || '');
+  }
+
+  /** 変更あり（まだ保存していない） */
+  function markDirty() {
+    dirty = true;
+    setStatus('未保存の変更があります', 'dirty');
+  }
+
+  /** 保存ボタン: 検証してからファイルに書く */
+  function saveNow() {
+    if (!currentJob) return false;
+    var job = currentJob;
+    var orderNo = String(job.orderNo || '').trim();
+    if (!orderNo) {
+      alert('受注番号を入力してください。');
+      $('#job-orderno') && $('#job-orderno').focus();
+      return false;
+    }
+    if (Store.orderNoExists(orderNo, job.id)) {
+      alert('受注番号「' + orderNo + '」は既に使われています。');
+      $('#job-orderno') && $('#job-orderno').focus();
+      return false;
+    }
+    Store.update(job);
+    dirty = false;
+    setStatus('保存しました ' + fmtDate(job.updatedAt), 'saved');
+    return true;
   }
 
   function renderJob(job) {
@@ -173,15 +214,15 @@
     var orderInput = el('input', { type: 'text', value: job.orderNo, id: 'job-orderno', placeholder: '受注番号' });
     customerInput.addEventListener('input', function () {
       job.customer = customerInput.value.trim();
-      scheduleSave();
+      markDirty();
     });
     orderInput.addEventListener('input', function () {
       var v = orderInput.value.trim();
-      if (!v) { headErr.textContent = '受注番号は必須です。'; return; }
-      if (Store.orderNoExists(v, job.id)) { headErr.textContent = '受注番号「' + v + '」は既に使われています。'; return; }
-      headErr.textContent = '';
       job.orderNo = v;
-      scheduleSave();
+      if (!v) headErr.textContent = '受注番号は必須です。';
+      else if (Store.orderNoExists(v, job.id)) headErr.textContent = '受注番号「' + v + '」は既に使われています。';
+      else headErr.textContent = '';
+      markDirty();
     });
 
     main.appendChild(el('div', { class: 'toolbar' }, [
@@ -192,8 +233,9 @@
         headErr
       ]),
       el('span', { class: 'spacer' }),
-      el('span', { id: 'save-status', class: 'muted' }),
-      el('button', { class: 'btn primary', onclick: function () { openPrint(job); } }, ['印刷'])
+      el('span', { id: 'save-status', class: 'save-status' }),
+      el('button', { class: 'btn primary', id: 'save-btn', onclick: function () { saveNow(); } }, ['保存']),
+      el('button', { class: 'btn', onclick: function () { openPrint(job); } }, ['印刷'])
     ]));
 
     var table = el('table', { class: 'items' });
@@ -213,7 +255,7 @@
       el('button', { class: 'btn', onclick: function () {
         job.items.push(Store.newItem());
         renderItems(job);
-        scheduleSave();
+        markDirty();
         var inputs = $$('#items-body input[data-field="name"]');
         if (inputs.length) inputs[inputs.length - 1].focus();
       } }, ['＋ 行を追加']),
@@ -283,12 +325,12 @@
     };
 
     var gidIn = el('input', { type: 'text', value: blank.groupId, 'data-field': 'groupId', placeholder: '例: 238', autocomplete: 'off' });
-    gidIn.addEventListener('input', function () { blank.groupId = gidIn.value; updateSummary(); scheduleSave(); });
+    gidIn.addEventListener('input', function () { blank.groupId = gidIn.value; updateSummary(); markDirty(); });
     var setsIn = numberInput(blank.sets, { 'data-field': 'sets', class: 'num sets' }, function (v) {
-      blank.sets = v; updateSummary(); scheduleSave();
+      blank.sets = v; updateSummary(); markDirty();
     });
     var countIn = numberInput(blank.count, { 'data-field': 'count', class: 'num count', placeholder: '枚数' }, function (v) {
-      blank.count = v; updateSummary(); scheduleSave();
+      blank.count = v; updateSummary(); markDirty();
     });
 
     tbody.appendChild(el('tr', {}, [
@@ -329,11 +371,11 @@
       var setsIn = numberInput(item.sets, { 'data-field': 'sets', placeholder: '例: 23500', class: 'num sets' }, function (v) {
         item.sets = v;
         updateSummary();
-        scheduleSave();
+        markDirty();
       });
 
-      nameIn.addEventListener('input', function () { item.name = nameIn.value; scheduleSave(); });
-      noteIn.addEventListener('input', function () { item.note = noteIn.value; scheduleSave(); });
+      nameIn.addEventListener('input', function () { item.name = nameIn.value; markDirty(); });
+      noteIn.addEventListener('input', function () { item.note = noteIn.value; markDirty(); });
       // Enter で次の行へ（最終行なら追加）
       setsIn.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter') return;
@@ -341,7 +383,7 @@
         if (idx === job.items.length - 1) {
           job.items.push(Store.newItem());
           renderItems(job);
-          scheduleSave();
+          markDirty();
         }
         var inputs = $$('#items-body input[data-field="name"]');
         if (inputs[idx + 1]) inputs[idx + 1].focus();
@@ -357,19 +399,19 @@
           el('button', { class: 'btn small', title: '上へ', onclick: function () {
             if (idx === 0) return;
             job.items.splice(idx - 1, 0, job.items.splice(idx, 1)[0]);
-            renderItems(job); scheduleSave();
+            renderItems(job); markDirty();
           } }, ['↑']),
           el('button', { class: 'btn small', title: '下へ', onclick: function () {
             if (idx === job.items.length - 1) return;
             job.items.splice(idx + 1, 0, job.items.splice(idx, 1)[0]);
-            renderItems(job); scheduleSave();
+            renderItems(job); markDirty();
           } }, ['↓']),
           el('button', { class: 'btn small danger', title: '行を削除', onclick: function () {
             var label = (item.name || '').trim() || ('行 ' + (idx + 1));
             if (!confirm('「' + label + '」を削除しますか？')) return;
             job.items.splice(idx, 1);
             if (!job.items.length) job.items.push(Store.newItem());
-            renderItems(job); scheduleSave();
+            renderItems(job); markDirty();
           } }, ['×'])
         ])
       ]);
@@ -380,7 +422,6 @@
 
   // ----------------------------------------------------------------- print
   function openPrint(job) {
-    saveNow();
     var root = $('#print-root');
     var pages = $('#print-pages');
     pages.innerHTML = '';
@@ -462,6 +503,10 @@
     $('#print-go').addEventListener('click', function () { fitAll(); window.print(); });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !$('#print-root').hidden) closePrint();
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S') && currentJob) {
+        e.preventDefault();
+        saveNow();
+      }
     });
     route();
   });

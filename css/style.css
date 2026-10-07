@@ -32,6 +32,9 @@ h2 { font-size: 1.2rem; margin: 0 0 8px; }
 .spacer { flex: 1; }
 .muted { color: var(--muted); font-size: 0.9em; }
 .error { color: var(--danger); font-size: 0.9em; min-height: 1.2em; }
+.save-status { font-size: 0.9em; color: var(--muted); }
+.save-status.dirty { color: #b45309; font-weight: 600; }
+.save-status.saved { color: #047857; }
 .empty { color: var(--muted); padding: 40px 0; text-align: center; }
 
 .job-head { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
