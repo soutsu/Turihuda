@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>釣り札作成</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="app"></main>
+
+  <!-- 新規作成 / 複製ダイアログ -->
+  <dialog id="job-dialog">
+    <form method="dialog" novalidate>
+      <h2 id="dlg-title">新しい仕事</h2>
+      <p id="dlg-source" class="muted"></p>
+      <label>得意先名<br><input type="text" id="dlg-customer" autocomplete="off" placeholder="例: DoCLASSE 9月号"></label>
+      <label>受注番号<br><input type="text" id="dlg-orderno" autocomplete="off" placeholder="例: 01-0007-5295-5"></label>
+      <p id="dlg-error" class="error"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn" id="dlg-cancel">キャンセル</button>
+        <button type="submit" class="btn primary">作成</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 印刷プレビュー -->
+  <div id="print-root" hidden>
+    <div class="print-toolbar">
+      <span>印刷プレビュー（<span id="print-count"></span>）</span>
+      <span class="spacer"></span>
+      <button class="btn" id="print-close">閉じる</button>
+      <button class="btn primary" id="print-go">印刷</button>
+    </div>
+    <div id="print-pages"></div>
+  </div>
+
+  <script src="js/calc.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
