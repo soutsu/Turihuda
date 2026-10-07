@@ -76,7 +76,8 @@ input.sets { width: 9.5em; }
 input.count { width: 5em; }
 table.blanks td:nth-child(2) { width: 28%; }
 table.blanks td:nth-child(3), table.blanks td:nth-child(4) { width: 1%; white-space: nowrap; }
-table.blanks tr.fixed-row td { background: #f9fafb; color: #4b5563; }
+table.blanks tr.fixed-row td, table.fixed tr.fixed-row td { background: #f9fafb; color: #4b5563; }
+table.fixed td:nth-child(3), table.fixed td:nth-child(4) { width: 1%; white-space: nowrap; }
 table.blanks td.fixed-name { font-weight: 600; white-space: nowrap; }
 .section-title { margin: 28px 0 10px; font-size: 1.1rem; }
 

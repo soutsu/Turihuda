@@ -126,6 +126,24 @@
     { name: '定外見本（ゆうメール）', sets: 20 }
   ];
 
+  /** 仕事ごとに必ず 1 枚ずつ印刷する固定商品（補足なし、内容固定） */
+  var FIXED_ALWAYS = [
+    { name: '定外見本　HOT', sets: 20 },
+    { name: '定外見本　カタリク', sets: 20 }
+  ];
+
+  /** 固定商品の札（各 1 枚） */
+  function buildFixedAlwaysTags() {
+    var tags = [];
+    FIXED_ALWAYS.forEach(function (fx) {
+      buildTags({ name: fx.name, note: '', sets: fx.sets }).forEach(function (t) {
+        t.isFixed = true;
+        tags.push(t);
+      });
+    });
+    return tags;
+  }
+
   /**
    * 空白 { groupId, sets, count } → 空白の札 + 固定商品の札
    * 順序: 空白 1..n、定外見本（南和）1..n、定外見本（ゆうメール）1..n
@@ -165,6 +183,8 @@
     BLANK_NAME: BLANK_NAME,
     BLANK_DEFAULT_SETS: BLANK_DEFAULT_SETS,
     FIXED_AFTER_BLANK: FIXED_AFTER_BLANK,
+    FIXED_ALWAYS: FIXED_ALWAYS,
+    buildFixedAlwaysTags: buildFixedAlwaysTags,
     buildSeriesTags: buildSeriesTags,
     buildBlankTags: buildBlankTags,
     summarize: summarize

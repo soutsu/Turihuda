@@ -236,6 +236,28 @@
     main.appendChild(btable);
     main.appendChild(el('p', { class: 'muted', text: '連数の枚数だけ「グループID-1, -2, …」として印刷します。連数が空なら空白と下記の固定商品は印刷されません。' }));
     renderBlank(job);
+
+    // ---- 固定出力（常に各 1 枚、変更不可） ----
+    main.appendChild(el('h2', { class: 'section-title', text: '固定出力' }));
+    var ftable = el('table', { class: 'items fixed' });
+    ftable.appendChild(el('thead', {}, [el('tr', {}, [
+      el('th', { text: '商品名' }),
+      el('th', { text: '商品名補足' }),
+      el('th', { text: 'セット数', class: 'num' }),
+      el('th', { text: '枚数', class: 'num' })
+    ])]));
+    var ftbody = el('tbody');
+    Calc.FIXED_ALWAYS.forEach(function (fx) {
+      ftbody.appendChild(el('tr', { class: 'fixed-row' }, [
+        el('td', { class: 'fixed-name', text: fx.name }),
+        el('td', { class: 'muted', text: 'なし' }),
+        el('td', { class: 'num', text: String(fx.sets) }),
+        el('td', { class: 'num', text: '1' })
+      ]));
+    });
+    ftable.appendChild(ftbody);
+    main.appendChild(ftable);
+    main.appendChild(el('p', { class: 'muted', text: '仕事ごとに必ず 1 枚ずつ、最後に印刷されます。内容は固定です。' }));
   }
 
   function renderBlank(job) {
@@ -369,11 +391,10 @@
       Calc.buildTags(item).forEach(function (t) { tags.push(t); });
     });
     Calc.buildBlankTags(job.blank || {}).forEach(function (t) { tags.push(t); });
+    Calc.buildFixedAlwaysTags().forEach(function (t) { tags.push(t); });
 
-    if (!tags.length) {
-      alert('印刷できる商品がありません。商品名とセット数を入力してください。');
-      return;
-    }
+    var hasInput = tags.some(function (t) { return !t.isFixed; });
+    if (!hasInput && !confirm('商品も空白も入力されていません。固定出力だけを印刷しますか？')) return;
 
     tags.forEach(function (tag) {
       var page = el('section', { class: 'tag-page' }, [

@@ -78,3 +78,9 @@ test('buildBlankTags: no 連数 → nothing; empty groupId → number only', () 
   const tags = calc.buildBlankTags({ groupId: '', sets: 50, count: 2 });
   assert.deepEqual(tags.slice(0, 2).map(t => t.note), ['1', '2']);
 });
+
+test('buildFixedAlwaysTags: two fixed sheets, no note, 20 sets', () => {
+  const tags = calc.buildFixedAlwaysTags();
+  assert.deepEqual(tags.map(t => [t.name, t.note]), [['定外見本　HOT', ''], ['定外見本　カタリク', '']]);
+  for (const t of tags) assert.deepEqual(t.lines, [{ sets: 20, koma: 1 }]);
+});
