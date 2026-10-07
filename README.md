@@ -26,3 +26,9 @@
 ```
 node --test
 ```
+
+## 公開ページ
+
+GitHub Pages で公開しています: https://soutsu.github.io/Turihuda/
+
+`.github/workflows/pages.yml` が push のたびに自動でデプロイします。
