@@ -31,14 +31,22 @@
   }
 
   var BLANK_DEFAULT_SETS = 50;
-  function newBlank() {
-    return { groupId: '', sets: BLANK_DEFAULT_SETS, count: 1 };
+  function newBlank(src) {
+    src = src || {};
+    return {
+      groupId: src.groupId || '',
+      sets: src.sets === undefined ? BLANK_DEFAULT_SETS : src.sets,
+      count: src.count === undefined ? '' : src.count
+    };
   }
 
-  /** 古い保存データにも blanks を持たせる */
+  /** 古い保存データ（blank なし / 旧 blanks 配列）を現在の形にそろえる */
   function normalize(job) {
     if (!Array.isArray(job.items)) job.items = [newItem()];
-    if (!Array.isArray(job.blanks)) job.blanks = [];
+    if (!job.blank || typeof job.blank !== 'object') {
+      job.blank = newBlank(Array.isArray(job.blanks) && job.blanks.length ? job.blanks[0] : null);
+    }
+    delete job.blanks;
     return job;
   }
 
@@ -62,7 +70,7 @@
       });
     },
 
-    create: function (customer, orderNo, items, blanks) {
+    create: function (customer, orderNo, items, blank) {
       var data = load();
       var job = {
         id: uid(),
@@ -71,9 +79,7 @@
         items: (items && items.length) ? items.map(function (it) {
           return { name: it.name || '', note: it.note || '', sets: it.sets === undefined ? '' : it.sets };
         }) : [newItem()],
-        blanks: (blanks || []).map(function (b) {
-          return { groupId: b.groupId || '', sets: b.sets === undefined ? BLANK_DEFAULT_SETS : b.sets, count: b.count === undefined ? 1 : b.count };
-        }),
+        blank: newBlank(blank),
         createdAt: now(),
         updatedAt: now()
       };

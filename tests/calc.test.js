@@ -59,12 +59,22 @@ test('buildTags: zero/empty sets produces nothing', () => {
   assert.deepEqual(calc.buildTags({ name: 'X', note: '', sets: '' }), []);
 });
 
-test('buildBlankTags: one page per 連数, note = groupId-n, name fixed to 空白', () => {
+test('buildBlankTags: blank pages then fixed products, each 連数 times', () => {
   const tags = calc.buildBlankTags({ groupId: '238', sets: 50, count: 3 });
-  assert.equal(tags.length, 3);
-  assert.deepEqual(tags.map(t => t.name), ['空白', '空白', '空白']);
-  assert.deepEqual(tags.map(t => t.note), ['238-1', '238-2', '238-3']);
-  for (const t of tags) assert.deepEqual(t.lines, [{ sets: 50, koma: 1 }]);
+  assert.equal(tags.length, 9);
+  assert.deepEqual(tags.slice(0, 3).map(t => [t.name, t.note]),
+    [['空白', '238-1'], ['空白', '238-2'], ['空白', '238-3']]);
+  assert.deepEqual(tags.slice(3, 6).map(t => [t.name, t.note]),
+    [['定外見本（南和）', '1'], ['定外見本（南和）', '2'], ['定外見本（南和）', '3']]);
+  assert.deepEqual(tags.slice(6, 9).map(t => [t.name, t.note]),
+    [['定外見本（ゆうメール）', '1'], ['定外見本（ゆうメール）', '2'], ['定外見本（ゆうメール）', '3']]);
+  for (const t of tags.slice(0, 3)) assert.deepEqual(t.lines, [{ sets: 50, koma: 1 }]);
+  for (const t of tags.slice(3)) assert.deepEqual(t.lines, [{ sets: 20, koma: 1 }]);
+});
+
+test('buildBlankTags: no 連数 → nothing; empty groupId → number only', () => {
   assert.deepEqual(calc.buildBlankTags({ groupId: '238', sets: 50, count: 0 }), []);
-  assert.deepEqual(calc.buildBlankTags({ groupId: '238', sets: 0, count: 2 }), []);
+  assert.deepEqual(calc.buildBlankTags({ groupId: '238', sets: 50, count: '' }), []);
+  const tags = calc.buildBlankTags({ groupId: '', sets: 50, count: 2 });
+  assert.deepEqual(tags.slice(0, 2).map(t => t.note), ['1', '2']);
 });

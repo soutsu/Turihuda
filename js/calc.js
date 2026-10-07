@@ -96,25 +96,50 @@
   }
 
   /**
-   * 空白 1 件 → 連数分の釣り札データの配列
+   * 連番シリーズ → 連数分の釣り札データの配列
    *
-   * blank: { groupId, sets, count }
-   * 商品名は「空白」固定。補足行は "[グループID]-連番"（1 始まり）。
+   * series: { name, prefix, sets, count }
+   * 補足行は prefix があれば "[prefix]-連番"、なければ連番の数字のみ（1 始まり）。
    */
-  var BLANK_NAME = '空白';
-  function buildBlankTags(blank) {
-    var count = Math.max(0, Math.floor(Number(blank.count) || 0));
-    var groupId = String(blank.groupId || '').trim();
+  function buildSeriesTags(series) {
+    var count = Math.max(0, Math.floor(Number(series.count) || 0));
+    var prefix = String(series.prefix || '').trim();
     var tags = [];
     for (var n = 1; n <= count; n++) {
-      var note = groupId ? groupId + '-' + n : String(n);
-      buildTags({ name: BLANK_NAME, note: note, sets: blank.sets }).forEach(function (t) {
-        t.isBlank = true;
+      var note = prefix ? prefix + '-' + n : String(n);
+      buildTags({ name: series.name, note: note, sets: series.sets }).forEach(function (t) {
         t.sheetIndex = n;
         t.sheetCount = count;
         tags.push(t);
       });
     }
+    return tags;
+  }
+
+  /** 空白（商品名固定、補足 = グループID-連番） */
+  var BLANK_NAME = '空白';
+  var BLANK_DEFAULT_SETS = 50;
+
+  /** 空白の連数と同じ枚数だけ必ず印刷する固定商品（補足 = 連番のみ） */
+  var FIXED_AFTER_BLANK = [
+    { name: '定外見本（南和）', sets: 20 },
+    { name: '定外見本（ゆうメール）', sets: 20 }
+  ];
+
+  /**
+   * 空白 { groupId, sets, count } → 空白の札 + 固定商品の札
+   * 順序: 空白 1..n、定外見本（南和）1..n、定外見本（ゆうメール）1..n
+   */
+  function buildBlankTags(blank) {
+    var count = Math.max(0, Math.floor(Number(blank.count) || 0));
+    var tags = buildSeriesTags({ name: BLANK_NAME, prefix: blank.groupId, sets: blank.sets, count: count });
+    tags.forEach(function (t) { t.isBlank = true; });
+    FIXED_AFTER_BLANK.forEach(function (fx) {
+      buildSeriesTags({ name: fx.name, prefix: '', sets: fx.sets, count: count }).forEach(function (t) {
+        t.isFixed = true;
+        tags.push(t);
+      });
+    });
     return tags;
   }
 
@@ -138,6 +163,9 @@
     splitTiers: splitTiers,
     buildTags: buildTags,
     BLANK_NAME: BLANK_NAME,
+    BLANK_DEFAULT_SETS: BLANK_DEFAULT_SETS,
+    FIXED_AFTER_BLANK: FIXED_AFTER_BLANK,
+    buildSeriesTags: buildSeriesTags,
     buildBlankTags: buildBlankTags,
     summarize: summarize
   };

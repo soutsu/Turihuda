@@ -143,7 +143,7 @@
     if (Store.orderNoExists(orderNo)) { err.textContent = '受注番号「' + orderNo + '」は既に使われています。'; return; }
 
     var source = dlg.dataset.sourceId ? Store.get(dlg.dataset.sourceId) : null;
-    var job = Store.create(customer, orderNo, source ? source.items : null, source ? source.blanks : null);
+    var job = Store.create(customer, orderNo, source ? source.items : null, source ? source.blank : null);
     dlg.close();
     location.hash = '#job/' + encodeURIComponent(job.id);
   }
@@ -222,101 +222,75 @@
 
     renderItems(job);
 
-    // ---- 空白 ----
+    // ---- 空白（常に 1 行、追加・削除なし） ----
     main.appendChild(el('h2', { class: 'section-title', text: '空白' }));
     var btable = el('table', { class: 'items blanks' });
     btable.appendChild(el('thead', {}, [el('tr', {}, [
-      el('th', { text: '#', class: 'num' }),
       el('th', { text: '商品名' }),
       el('th', { text: 'グループID' }),
       el('th', { text: 'セット数', class: 'num' }),
       el('th', { text: '連数', class: 'num' }),
-      el('th', { text: '印刷内容' }),
-      el('th', { text: '' })
+      el('th', { text: '印刷内容' })
     ])]));
     btable.appendChild(el('tbody', { id: 'blanks-body' }));
     main.appendChild(btable);
-    main.appendChild(el('div', { class: 'row-actions' }, [
-      el('button', { class: 'btn', onclick: function () {
-        job.blanks.push(Store.newBlank());
-        renderBlanks(job);
-        scheduleSave();
-        var inputs = $$('#blanks-body input[data-field="groupId"]');
-        if (inputs.length) inputs[inputs.length - 1].focus();
-      } }, ['＋ 空白を追加']),
-      el('span', { class: 'muted', text: '　商品名は「' + Calc.BLANK_NAME + '」固定。連数の枚数だけ「グループID-1, -2, …」として印刷します。' })
-    ]));
-    renderBlanks(job);
+    main.appendChild(el('p', { class: 'muted', text: '連数の枚数だけ「グループID-1, -2, …」として印刷します。連数が空なら空白と下記の固定商品は印刷されません。' }));
+    renderBlank(job);
   }
 
-  function renderBlanks(job) {
+  function renderBlank(job) {
+    var blank = job.blank;
     var tbody = $('#blanks-body');
     tbody.innerHTML = '';
-    if (!job.blanks.length) {
-      tbody.appendChild(el('tr', {}, [el('td', { colspan: '7', class: 'muted', text: '空白はありません。' })]));
-      return;
-    }
-    job.blanks.forEach(function (blank, idx) {
-      var summary = el('td', { class: 'summary' });
-      var updateSummary = function () {
-        var count = Math.max(0, Math.floor(Number(blank.count) || 0));
-        var gid = String(blank.groupId || '').trim();
-        var sm = Calc.summarize(blank.sets);
-        if (!count || !sm.koma) { summary.textContent = ''; return; }
-        var first = gid ? gid + '-1' : '1';
-        var last = gid ? gid + '-' + count : String(count);
-        summary.textContent = count + ' 枚（' + first + (count > 1 ? ' 〜 ' + last : '') + '）／ 各 ' + sm.koma + ' コマ';
-      };
 
-      var gidIn = el('input', { type: 'text', value: blank.groupId, 'data-field': 'groupId', placeholder: '例: 238', autocomplete: 'off' });
-      gidIn.addEventListener('input', function () { blank.groupId = gidIn.value; updateSummary(); scheduleSave(); });
-      var setsIn = numberInput(blank.sets, { 'data-field': 'sets', class: 'num sets' }, function (v) {
-        blank.sets = v; updateSummary(); scheduleSave();
-      });
-      var countIn = numberInput(blank.count, { 'data-field': 'count', class: 'num count' }, function (v) {
-        blank.count = v; updateSummary(); scheduleSave();
-      });
-      countIn.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        if (idx === job.blanks.length - 1) {
-          job.blanks.push(Store.newBlank());
-          renderBlanks(job);
-          scheduleSave();
-        }
-        var inputs = $$('#blanks-body input[data-field="groupId"]');
-        if (inputs[idx + 1]) inputs[idx + 1].focus();
-      });
+    var count = function () { return Math.max(0, Math.floor(Number(blank.count) || 0)); };
+    var seriesText = function (prefix, sets) {
+      var n = count();
+      var sm = Calc.summarize(sets);
+      if (!n || !sm.koma) return '—';
+      var first = prefix ? prefix + '-1' : '1';
+      var last = prefix ? prefix + '-' + n : String(n);
+      return n + ' 枚（' + first + (n > 1 ? ' 〜 ' + last : '') + '）／ 各 ' + sm.koma + ' コマ';
+    };
 
-      var tr = el('tr', {}, [
-        el('td', { text: String(idx + 1), class: 'num' }),
-        el('td', { class: 'fixed-name', text: Calc.BLANK_NAME }),
-        el('td', {}, [gidIn]),
-        el('td', {}, [setsIn]),
-        el('td', {}, [countIn]),
-        summary,
-        el('td', { class: 'actions' }, [
-          el('button', { class: 'btn small', title: '上へ', onclick: function () {
-            if (idx === 0) return;
-            job.blanks.splice(idx - 1, 0, job.blanks.splice(idx, 1)[0]);
-            renderBlanks(job); scheduleSave();
-          } }, ['↑']),
-          el('button', { class: 'btn small', title: '下へ', onclick: function () {
-            if (idx === job.blanks.length - 1) return;
-            job.blanks.splice(idx + 1, 0, job.blanks.splice(idx, 1)[0]);
-            renderBlanks(job); scheduleSave();
-          } }, ['↓']),
-          el('button', { class: 'btn small danger', title: '行を削除', onclick: function () {
-            var label = (blank.groupId || '').trim() ? ('空白 ' + blank.groupId) : ('空白 行 ' + (idx + 1));
-            if (!confirm('「' + label + '」を削除しますか？')) return;
-            job.blanks.splice(idx, 1);
-            renderBlanks(job); scheduleSave();
-          } }, ['×'])
-        ])
-      ]);
-      updateSummary();
-      tbody.appendChild(tr);
+    var summary = el('td', { class: 'summary' });
+    var fixedSummaries = [];
+    var updateSummary = function () {
+      summary.textContent = seriesText(String(blank.groupId || '').trim(), blank.sets);
+      fixedSummaries.forEach(function (f) { f.cell.textContent = seriesText('', f.sets); });
+    };
+
+    var gidIn = el('input', { type: 'text', value: blank.groupId, 'data-field': 'groupId', placeholder: '例: 238', autocomplete: 'off' });
+    gidIn.addEventListener('input', function () { blank.groupId = gidIn.value; updateSummary(); scheduleSave(); });
+    var setsIn = numberInput(blank.sets, { 'data-field': 'sets', class: 'num sets' }, function (v) {
+      blank.sets = v; updateSummary(); scheduleSave();
     });
+    var countIn = numberInput(blank.count, { 'data-field': 'count', class: 'num count', placeholder: '枚数' }, function (v) {
+      blank.count = v; updateSummary(); scheduleSave();
+    });
+
+    tbody.appendChild(el('tr', {}, [
+      el('td', { class: 'fixed-name', text: Calc.BLANK_NAME }),
+      el('td', {}, [gidIn]),
+      el('td', {}, [setsIn]),
+      el('td', {}, [countIn]),
+      summary
+    ]));
+
+    // 空白の連数に連動して必ず印刷される固定商品（入力不可）
+    Calc.FIXED_AFTER_BLANK.forEach(function (fx) {
+      var cell = el('td', { class: 'summary' });
+      fixedSummaries.push({ cell: cell, sets: fx.sets });
+      tbody.appendChild(el('tr', { class: 'fixed-row' }, [
+        el('td', { class: 'fixed-name', text: fx.name }),
+        el('td', { class: 'muted', text: '連数の数字のみ' }),
+        el('td', { class: 'num', text: String(fx.sets) }),
+        el('td', { class: 'num muted', text: '空白と同じ' }),
+        cell
+      ]));
+    });
+
+    updateSummary();
   }
 
   function renderItems(job) {
@@ -394,9 +368,7 @@
       if (!(item.name || '').trim() && !(Number(item.sets) > 0)) return;
       Calc.buildTags(item).forEach(function (t) { tags.push(t); });
     });
-    (job.blanks || []).forEach(function (blank) {
-      Calc.buildBlankTags(blank).forEach(function (t) { tags.push(t); });
-    });
+    Calc.buildBlankTags(job.blank || {}).forEach(function (t) { tags.push(t); });
 
     if (!tags.length) {
       alert('印刷できる商品がありません。商品名とセット数を入力してください。');
@@ -435,14 +407,26 @@
     document.body.classList.remove('printing');
   }
 
-  /** 長い文字列が紙幅を超える場合に文字を縮める */
+  /**
+   * 長い文字列が紙幅を超える場合に文字を縮める。
+   * プレビューの札は印刷と同じ 273mm 幅で描画しているので、ここで決めた
+   * 文字サイズがそのまま印刷に使われる（beforeprint では再計測しない：
+   * その時点の計測は紙幅ではなく画面幅になるため）。
+   * 印刷では画面より字幅がやや広く出ることがあるため、幅の 95% に収める。
+   */
+  var FIT_RATIO = 0.95;
+  function textWidth(node) {
+    var range = document.createRange();
+    range.selectNodeContents(node);
+    return range.getBoundingClientRect().width;
+  }
   function fitAll() {
     $$('#print-pages .fit').forEach(function (node) {
       node.style.fontSize = '';
       var size = parseFloat(getComputedStyle(node).fontSize);
       var min = size * 0.3;
       var guard = 0;
-      while (node.scrollWidth > node.clientWidth && size > min && guard++ < 60) {
+      while (textWidth(node) > node.clientWidth * FIT_RATIO && size > min && guard++ < 60) {
         size = size * 0.92;
         node.style.fontSize = size + 'px';
       }
@@ -458,7 +442,6 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !$('#print-root').hidden) closePrint();
     });
-    window.addEventListener('beforeprint', fitAll);
     route();
   });
 })();
