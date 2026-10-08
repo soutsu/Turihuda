@@ -497,6 +497,7 @@
 
   // ------------------------------------------------------------------ init
   document.addEventListener('DOMContentLoaded', function () {
+    Store.seedTemplates();
     $('#job-dialog form').addEventListener('submit', submitJobDialog);
     $('#dlg-cancel').addEventListener('click', function () { $('#job-dialog').close(); });
     $('#print-close').addEventListener('click', closePrint);

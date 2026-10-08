@@ -3,6 +3,7 @@
   'use strict';
 
   var KEY = 'turihuda.jobs.v1';
+  var SEED_KEY = 'turihuda.seeded.v1';   // テンプレート取り込み済みの印
 
   function now() { return new Date().toISOString(); }
 
@@ -50,7 +51,43 @@
     return job;
   }
 
+  /**
+   * 初回起動時にテンプレート（js/templates.js）を取り込む。
+   * 取り込み済みの印があれば何もしない。同じ受注番号が既にある仕事は飛ばす。
+   */
+  function seedTemplates() {
+    try {
+      if (localStorage.getItem(SEED_KEY)) return;
+      var templates = Array.isArray(root.TurihudaTemplates) ? root.TurihudaTemplates : [];
+      var data = load();
+      var existing = {};
+      data.jobs.forEach(function (j) { existing[String(j.orderNo || '').trim()] = true; });
+      templates.forEach(function (t) {
+        var orderNo = String(t.orderNo || '').trim();
+        if (!orderNo || existing[orderNo]) return;
+        existing[orderNo] = true;
+        data.jobs.push(normalize({
+          id: uid(),
+          customer: String(t.customer || '').trim(),
+          orderNo: orderNo,
+          items: (t.items || []).map(function (it) {
+            return { name: it.name || '', note: it.note || '', sets: it.sets === undefined ? '' : it.sets };
+          }),
+          blank: newBlank(t.blank),
+          createdAt: now(),
+          updatedAt: now()
+        }));
+      });
+      save(data);
+      localStorage.setItem(SEED_KEY, now());
+    } catch (e) {
+      console.error('テンプレートの取り込みに失敗しました', e);
+    }
+  }
+
   var Store = {
+    seedTemplates: seedTemplates,
+
     list: function () {
       return load().jobs.map(normalize).sort(function (a, b) {
         return (b.updatedAt || '').localeCompare(a.updatedAt || '');
