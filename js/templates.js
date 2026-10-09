@@ -16,7 +16,7 @@
   'use strict';
   root.TurihudaTemplates = [
     {
-      customer: "DoCLASSE E11月号",
+      customer: "【テンプレート】DoCLASSE E11月号",
       orderNo: "01-0013-0496-4",
       items: [
         { name: "(A)", note: "", sets: 147656 },
@@ -44,7 +44,7 @@
       }
     },
     {
-      customer: "DoCLASSE リメール E11月号",
+      customer: "【テンプレート】DoCLASSE E11月号 リメール",
       orderNo: "01-0014-2394-2",
       items: [
         { name: "(A)", note: "", sets: 61475 },
